@@ -2,9 +2,9 @@
 
 **AI Voice Assistant for Law Firms** — Automated scheduling, client routing, and appointment management for a 3-lawyer practice.
 
-[![Demo](https://img.youtube.com/vi/YOUR_VIDEO_ID/maxresdefault.jpg)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
+[![Demo](https://img.youtube.com/vi/YOUR_VIDEO_ID/maxresdefault.jpg)](https://youtu.be/SPUyJYx3Etw)
 
-> 🎥 **[Watch the full demo (9 min)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)** — Live call recording, workflow execution, and database updates in real-time.
+> 🎥 **[Watch the full demo (9 min)](https://youtu.be/SPUyJYx3Etw)** — Live call recording, workflow execution, and database updates in real-time.
 
 ---
 
