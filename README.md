@@ -104,7 +104,7 @@ Four core tables in Supabase (PostgreSQL):
 
 1. **Clone this repo**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/legalassist-ai.git
+   git clone https://github.com/dhrub1/legalassist-ai.git
    cd legalassist-ai
    ```
 
