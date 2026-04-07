@@ -1,0 +1,249 @@
+{
+  "name": "Check Lawyer Availability",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "check-availability",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ea2e0d9d-6096-4bf2-bc09-75e99e1ba1dc",
+      "name": "Webhook",
+      "webhookId": "687aee98-c56f-479c-a17b-9d281fc1f56a"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Date is inside body object in the webhook\nconst dateStr = $('Webhook').item.json.body.date;\n\nconst parts = dateStr.split('-');\nconst year = parseInt(parts[0]);\nconst month = parseInt(parts[1]) - 1;\nconst day = parseInt(parts[2]);\n\nconst date = new Date(Date.UTC(year, month, day));\nconst days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];\nconst dayName = days[date.getUTCDay()];\n\nconst lawyerData = $input.item.json;\nconst workingHours = lawyerData.working_hours[dayName];\n\nreturn {\n  json: {\n    day_name: dayName,\n    working_hours: workingHours || null,\n    lawyer_name: lawyerData.name,\n    lawyer_id: lawyerData.id\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "d6c781be-f320-48e8-a70b-5c7f0d9177e1",
+      "name": "Get Day of Week"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "appointments",
+        "returnAll": true,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "lawyer_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Get Lawyer Info').item.json.id }}"
+            },
+            {
+              "keyName": "appointment_date",
+              "condition": "eq",
+              "keyValue": "={{ $('Extract Parameters').item.json['date '] }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "scheduled"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        896,
+        0
+      ],
+      "id": "0b3d1457-40c3-4b7f-9798-846932c57345",
+      "name": "Get Existing Appointments",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "d46PhpLGTJpDJ3r0",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get data from previous nodes\nconst dateStr = $('Webhook').item.json.body.date;\nconst durationMins = parseInt($('Webhook').item.json.body.duration_minutes) || 60;\nconst workingHours = $('Get Day of Week').item.json.working_hours;\nconst lawyerName = $('Get Day of Week').item.json.lawyer_name;\nconst lawyerId = $('Get Day of Week').item.json.lawyer_id;\n\n// Get existing appointments - may be empty array\nconst existingApts = $('Get Existing Appointments').all() || [];\n\n// If not a working day\nif (!workingHours) {\n  return [{\n    json: {\n      lawyer_id: lawyerId,\n      lawyer_name: lawyerName,\n      date: dateStr,\n      available: false,\n      slots: [],\n      total_available: 0,\n      reason: \"Not a working day\"\n    }\n  }];\n}\n\n// Parse working hours\nconst [startHour, startMin] = workingHours.start.split(':').map(Number);\nconst [endHour, endMin] = workingHours.end.split(':').map(Number);\n\n// Helper to format time to 12hr\nfunction formatTime(h, m) {\n  const period = h >= 12 ? 'PM' : 'AM';\n  const hour12 = h % 12 || 12;\n  return `${hour12}:${String(m).padStart(2, '0')} ${period}`;\n}\n\n// Generate 30-minute slots\nconst slots = [];\nlet currentHour = startHour;\nlet currentMin = startMin;\n\nwhile (\n  currentHour < endHour || \n  (currentHour === endHour && currentMin < endMin)\n) {\n  const slotTime = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;\n  \n  // Calculate slot end time\n  const totalMins = currentHour * 60 + currentMin + durationMins;\n  const endH = Math.floor(totalMins / 60);\n  const endM = totalMins % 60;\n  const slotEnd = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;\n\n  // Skip lunch hour (12:00 - 13:00)\n  const isLunch = (currentHour === 12);\n\n  // Skip if slot end goes past working hours\n  const pastEndOfDay = endH > endHour || (endH === endHour && endM > endMin);\n\n  if (!isLunch && !pastEndOfDay) {\n    // Check conflicts with existing appointments\n    let hasConflict = false;\n    for (const apt of existingApts) {\n      const aptStart = apt.json.start_time;\n      const aptEnd = apt.json.end_time;\n      if (slotTime < aptEnd && slotEnd > aptStart) {\n        hasConflict = true;\n        break;\n      }\n    }\n\n    if (!hasConflict) {\n      slots.push({\n        time: slotTime,\n        formatted: formatTime(currentHour, currentMin)\n      });\n    }\n  }\n\n  // Move to next 30-min slot\n  currentMin += 30;\n  if (currentMin >= 60) {\n    currentMin = 0;\n    currentHour++;\n  }\n}\n\nreturn [{\n  json: {\n    lawyer_id: lawyerId,\n    lawyer_name: lawyerName,\n    date: dateStr,\n    available: slots.length > 0,\n    slots: slots,\n    total_available: slots.length\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "9a1be4ac-8557-4947-a32b-e86381917e96",
+      "name": "Generate Available Slots"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1344,
+        0
+      ],
+      "id": "f6c19206-d8a2-4bf9-8fce-07b67524ddde",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8b17b579-f53a-4bc5-a5bb-f3de970b6690",
+              "name": "lawyer_id",
+              "value": "={{ $json.body.lawyer_id }}",
+              "type": "string"
+            },
+            {
+              "id": "1b05d591-6a36-4fcf-bbc3-f186bdf51a65",
+              "name": "date ",
+              "value": "={{ $json.body.date }}",
+              "type": "string"
+            },
+            {
+              "id": "6b985519-1ae8-4e3f-a951-699597edc122",
+              "name": "duration_minutes ",
+              "value": "={{ $json.duration_minutes || 60 }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "id": "74be99b6-dc13-4389-b28a-9b9a0d9016ef",
+      "name": "Extract Parameters"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "lawyers",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.lawyer_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "12b31224-5d6d-4d6d-b7b0-6e0d83894408",
+      "name": "Get Lawyer Info",
+      "credentials": {
+        "supabaseApi": {
+          "id": "d46PhpLGTJpDJ3r0",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Parameters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Day of Week": {
+      "main": [
+        [
+          {
+            "node": "Get Existing Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing Appointments": {
+      "main": [
+        [
+          {
+            "node": "Generate Available Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Available Slots": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Parameters": {
+      "main": [
+        [
+          {
+            "node": "Get Lawyer Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Lawyer Info": {
+      "main": [
+        [
+          {
+            "node": "Get Day of Week",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "32b25417-e04c-4700-aa63-cd2c63e13765",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4282ca31d83881be7e8409a5f3c25a3c59b471a84e3ff80d9053071d2fed5f4a"
+  },
+  "id": "94Fqq2MULJHEyeUg",
+  "tags": []
+}

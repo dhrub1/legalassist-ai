@@ -1,0 +1,290 @@
+{
+  "name": "Send Day-Of Reminders",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        -64
+      ],
+      "id": "427d2e16-ad9b-4db5-8ddb-104e81c4f568",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        448,
+        -64
+      ],
+      "id": "0505d3c5-a4fd-433c-9d9e-282791974ac4",
+      "name": "Loop Appointments"
+    },
+    {
+      "parameters": {
+        "url": "=https://saixdmbqjfmpxgqvsibg.supabase.co/rest/v1/clients?id=eq.{{ $json.client_id }}&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            },
+            {
+              "name": "Authorization ",
+              "value": "Bearer  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        704,
+        -48
+      ],
+      "id": "20ba61e3-b609-402c-8c29-8f8ec43aa7fd",
+      "name": "Get Client Details"
+    },
+    {
+      "parameters": {
+        "from": "+1 365 796 4116",
+        "to": "={{ $('Get Client Details').item.json.phone }}",
+        "message": "=Your consultation with {{ $('get Lawyer detail').item.json[0].name }} is TODAY at {{ $('Loop Appointments').item.json.start_time }}. Our office address is [Your Address]. See you soon! - Smith & Associates Law",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        -96
+      ],
+      "id": "576aaf9f-54fd-4168-8023-af2a540530af",
+      "name": "Send an SMS/MMS/WhatsApp message",
+      "credentials": {
+        "twilioApi": {
+          "id": "xd8Wkb0SF7N4ssUH",
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://saixdmbqjfmpxgqvsibg.supabase.co/rest/v1/appointments?id=eq.{{ $('Loop Appointments').item.json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"reminder_day_of_sent\": true\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1344,
+        -64
+      ],
+      "id": "6aae3825-8a56-4411-8eec-75f8205a5fea",
+      "name": "Mark 24h Sent"
+    },
+    {
+      "parameters": {
+        "url": "=https://saixdmbqjfmpxgqvsibg.supabase.co/rest/v1/lawyers?id=eq.{{ $('Loop Appointments').item.json.lawyer_id }}&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            },
+            {
+              "name": "Authorization ",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        912,
+        -112
+      ],
+      "id": "328c3acf-53a9-43e7-9802-9f5f74ea0068",
+      "name": "get Lawyer detail"
+    },
+    {
+      "parameters": {
+        "url": "https://saixdmbqjfmpxgqvsibg.supabase.co/rest/v1/appointments",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "appointment_date",
+              "value": "=eq.{{ new Date().toISOString().split('T')[0] }}"
+            },
+            {
+              "name": "status",
+              "value": "eq.scheduled"
+            },
+            {
+              "name": "reminder_day_of_sent",
+              "value": "eq.false"
+            },
+            {
+              "name": "select",
+              "value": "*"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        224,
+        -64
+      ],
+      "id": "adfeb4ec-14e5-4bfa-b5dc-25f341665c94",
+      "name": " Get Appointments query"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": " Get Appointments query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Appointments": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Get Client Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Client Details": {
+      "main": [
+        [
+          {
+            "node": "get Lawyer detail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an SMS/MMS/WhatsApp message": {
+      "main": [
+        [
+          {
+            "node": "Mark 24h Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark 24h Sent": {
+      "main": [
+        [
+          {
+            "node": "Loop Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get Lawyer detail": {
+      "main": [
+        [
+          {
+            "node": "Send an SMS/MMS/WhatsApp message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    " Get Appointments query": {
+      "main": [
+        [
+          {
+            "node": "Loop Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "709b1e56-613a-4dc0-a1b6-94abd45c1585",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4282ca31d83881be7e8409a5f3c25a3c59b471a84e3ff80d9053071d2fed5f4a"
+  },
+  "id": "Na8bLAbGNqXaUto1",
+  "tags": []
+}

@@ -1,0 +1,271 @@
+{
+  "name": "Cancel Appointment",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cancel-appointment",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        -176
+      ],
+      "id": "4c093dfe-9e89-4550-b23d-dcde7d5c312e",
+      "name": "Cancel appointment",
+      "webhookId": "360d9b4c-2f78-42ce-8c4f-d62e4e821c70"
+    },
+    {
+      "parameters": {
+        "url": "https://saixdmbqjfmpxgqvsibg.supabase.co/rest/v1/appointments",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "*"
+            },
+            {
+              "name": "status",
+              "value": "eq.scheduled"
+            },
+            {
+              "name": "order",
+              "value": "appointment_date.desc"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            },
+            {
+              "name": "Authorization ",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4 "
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        224,
+        -176
+      ],
+      "id": "f3cd5845-75cd-48e7-a585-85f03b0ea46d",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const apt = $input.item.json;\n\nif (!apt || !apt.id) {\n  return [{\n    json: {\n      can_cancel: false,\n      appointment_found: false,\n      reason: \"No scheduled appointment found\"\n    }\n  }];\n}\n\nconst aptDateTime = new Date(`${apt.appointment_date}T${apt.start_time}`);\nconst now = new Date();\nconst hoursUntil = (aptDateTime - now) / (1000 * 60 * 60);\n\nreturn [{\n  json: {\n    appointment_id: apt.id,\n    appointment_date: apt.appointment_date,\n    start_time: apt.start_time,\n    appointment_found: true,\n    can_cancel: hoursUntil > 24,\n    hours_until: Math.round(hoursUntil),\n    cancellation_reason: 'Client requested cancellation'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -176
+      ],
+      "id": "ac92f732-6a92-4b26-9d4d-8f125a7e29aa",
+      "name": "Check 24 Hour Policy"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5d57911c-4818-454d-ad49-5369b2f0bfe0",
+              "leftValue": "={{ $json.can_cancel }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        -176
+      ],
+      "id": "5766eee3-225f-4e28-8132-6d46ea630ba8",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://saixdmbqjfmpxgqvsibg.supabase.co/rest/v1/appointments?id=eq.{{ $('Check 24 Hour Policy').item.json.appointment_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4 "
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"status\": \"cancelled\",\n  \"cancellation_reason\": \"={{ $('Check 24 Hour Policy').item.json.cancellation_reason }}\",\n  \"cancelled_at\": \"={{ new Date().toISOString() }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        896,
+        -240
+      ],
+      "id": "493cecc8-0d68-4865-a4cb-5b51bf31cca4",
+      "name": "Update to Cancelled"
+    },
+    {
+      "parameters": {
+        "jsCode": "const policyCheck = $('Check 24 Hour Policy').item.json;\n\nif (!policyCheck.appointment_found) {\n  return [{\n    json: {\n      success: false,\n      message: \"No scheduled appointment found for this phone number.\"\n    }\n  }];\n}\n\nif (!policyCheck.can_cancel) {\n  return [{\n    json: {\n      success: false,\n      message: \"Appointments cannot be cancelled within 24 hours. Please call our office directly at +1-555-0100.\"\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    success: true,\n    message: \"Your appointment has been successfully cancelled.\",\n    appointment_date: policyCheck.appointment_date,\n    appointment_time: policyCheck.start_time\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -176
+      ],
+      "id": "aaf99330-a970-40c7-8da0-8a1439582e7e",
+      "name": "Build Response "
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1344,
+        -176
+      ],
+      "id": "21d21ef8-0fd1-4f02-ae38-3ddc2802ce75",
+      "name": "Respond to Webhook",
+      "alwaysOutputData": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cancel appointment": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Check 24 Hour Policy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check 24 Hour Policy": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Update to Cancelled",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Response ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update to Cancelled": {
+      "main": [
+        [
+          {
+            "node": "Build Response ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response ": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a4966ec7-403c-41ed-b13c-f7db43803997",
+  "meta": {
+    "instanceId": "4282ca31d83881be7e8409a5f3c25a3c59b471a84e3ff80d9053071d2fed5f4a"
+  },
+  "id": "BElAjWICV2jaJXHv",
+  "tags": []
+}

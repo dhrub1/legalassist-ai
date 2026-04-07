@@ -1,0 +1,289 @@
+{
+  "name": "Send 24-Hour Reminders",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        -64
+      ],
+      "id": "4e04a60c-ea63-4295-bd16-cb69df3c6206",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://saixdmbqjfmpxgqvsibg.supabase.co/rest/v1/appointments",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "appointment_date",
+              "value": "=eq.{{ $now.plus({days: 1}).toFormat('yyyy-MM-dd') }}"
+            },
+            {
+              "name": "status",
+              "value": "eq.scheduled"
+            },
+            {
+              "name": "reminder_24h_sent",
+              "value": "eq.false"
+            },
+            {
+              "name": "select",
+              "value": "*"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        224,
+        -64
+      ],
+      "id": "21bc5b65-b69f-46e0-9aa0-6b762ea3c981",
+      "name": "Get Tomorrow's Appointments"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        448,
+        -64
+      ],
+      "id": "538f6e4b-1143-403d-977f-503ade64342b",
+      "name": "Loop Appointments"
+    },
+    {
+      "parameters": {
+        "url": "=https://saixdmbqjfmpxgqvsibg.supabase.co/rest/v1/clients?id=eq.{{ $json.client_id }}&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            },
+            {
+              "name": "Authorization ",
+              "value": "Bearer  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        704,
+        -48
+      ],
+      "id": "febdaf92-2dcd-4cc9-b9ee-798ddb61a24c",
+      "name": "Get Client Details"
+    },
+    {
+      "parameters": {
+        "from": "+1 365 796 4116",
+        "to": "={{ $('Get Client Details').item.json.phone }}",
+        "message": "=Reminder: Your consultation with {{ $json.name }} is tomorrow at {{ $('Loop Appointments').item.json.start_time }}. Please arrive 10 minutes early and bring relevant documents. Reply CANCEL to cancel. - Smith & Associates Law",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        -96
+      ],
+      "id": "456e59ae-5746-423a-a4ae-2085b59a5511",
+      "name": "Send an SMS/MMS/WhatsApp message",
+      "credentials": {
+        "twilioApi": {
+          "id": "xd8Wkb0SF7N4ssUH",
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://saixdmbqjfmpxgqvsibg.supabase.co/rest/v1/appointments?id=eq.{{ $('Loop Appointments').item.json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer  eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"reminder_24h_sent\": true}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1344,
+        -64
+      ],
+      "id": "a42c6070-9e76-401c-8380-ed1c615c87ab",
+      "name": "Mark 24h Sent"
+    },
+    {
+      "parameters": {
+        "url": "=https://saixdmbqjfmpxgqvsibg.supabase.co/rest/v1/lawyers?id=eq.{{ $('Loop Appointments').item.json.lawyer_id }}&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            },
+            {
+              "name": "Authorization ",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        912,
+        -112
+      ],
+      "id": "32b9ad54-8455-4412-950c-c2173d449822",
+      "name": "get Lawyer detail"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Tomorrow's Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Tomorrow's Appointments": {
+      "main": [
+        [
+          {
+            "node": "Loop Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Appointments": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Get Client Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Client Details": {
+      "main": [
+        [
+          {
+            "node": "get Lawyer detail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an SMS/MMS/WhatsApp message": {
+      "main": [
+        [
+          {
+            "node": "Mark 24h Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark 24h Sent": {
+      "main": [
+        [
+          {
+            "node": "Loop Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get Lawyer detail": {
+      "main": [
+        [
+          {
+            "node": "Send an SMS/MMS/WhatsApp message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "9de19be2-a34e-496e-abed-3cd067cadfc7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4282ca31d83881be7e8409a5f3c25a3c59b471a84e3ff80d9053071d2fed5f4a"
+  },
+  "id": "9ZMld4MfHZTdPBHo",
+  "tags": []
+}

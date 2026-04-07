@@ -1,0 +1,395 @@
+{
+  "name": "Vapi Function Router",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi-functions",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        48
+      ],
+      "id": "0c3367ea-cef3-4c8c-aeba-a3c177f50771",
+      "name": "Vapi Functions",
+      "webhookId": "9a278fb9-1d9c-41bc-a224-60a8f53ef14e"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body;\nconst messageType = body.message?.type || body.type || 'unknown';\n\n// Only process tool-calls messages\n// Ignore end-of-call-report, status-update etc.\nif (messageType !== 'tool-calls' && \n    !body.message?.toolCalls && \n    !body.toolCalls) {\n  \n  return [{\n    json: {\n      skip: true,\n      message_type: messageType,\n      message: `Ignoring message type: ${messageType}`\n    }\n  }];\n}\n\n// Process tool calls normally\nconst body2 = $input.item.json.body;\nlet toolCalls = null;\n\nif (body2.message && body2.message.toolCalls) {\n  toolCalls = body2.message.toolCalls;\n} else if (body2.toolCalls) {\n  toolCalls = body2.toolCalls;\n}\n\nif (!toolCalls) {\n  return [{\n    json: {\n      skip: true,\n      message: \"No toolCalls found\",\n      body_keys: Object.keys(body2),\n      message_keys: body2.message ? Object.keys(body2.message) : []\n    }\n  }];\n}\n\nconst toolCall = toolCalls[0];\nconst funcName = toolCall.function ? toolCall.function.name : toolCall.name;\nconst toolCallId = toolCall.id || toolCall.toolCallId || funcName;\n\nconst funcObj = toolCall.function || toolCall;\nconst keys = Object.keys(funcObj);\nlet funcParams = {};\n\nfor (const key of keys) {\n  if (key !== 'name' && key !== 'id') {\n    funcParams = funcObj[key];\n  }\n}\n\nif (typeof funcParams === 'string') {\n  try { funcParams = JSON.parse(funcParams); } catch(e) { funcParams = {}; }\n}\n\nreturn [{\n  json: {\n    skip: false,\n    function_name: funcName,\n    function_parameters: funcParams,\n    tool_call_id: toolCallId\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        48
+      ],
+      "id": "44dd4b04-986f-49e5-ae75-922b42f54164",
+      "name": "Extract Function Name"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.function_name }}",
+                    "rightValue": "check_lawyer_availability",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "81c3f80d-19a3-43ce-a336-ae1dbb0750e0"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c8ca4cc4-6e5a-4faa-b9ad-317428d46c84",
+                    "leftValue": "={{ $json.function_name }}",
+                    "rightValue": "book_appointment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "55c6a64e-cabb-43c0-9da1-114b391c2f00",
+                    "leftValue": "={{ $json.function_name }}",
+                    "rightValue": "cancel_appointment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        -160
+      ],
+      "id": "b6842b4a-e670-4bd2-9ff8-614ffaed4f63",
+      "name": "Route by Function"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://primary-production-ea8f6.up.railway.app/webhook/check-availability",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Extract Function Name').item.json.function_parameters) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        896,
+        -320
+      ],
+      "id": "0520059b-15bb-4a1c-8b45-f78c638f6ddc",
+      "name": "Call Check Availability"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://primary-production-ea8f6.up.railway.app/webhook/book-appointment",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Extract Function Name').item.json.function_parameters) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        896,
+        -128
+      ],
+      "id": "4558adbd-a6b4-45bb-93eb-048ada331fcf",
+      "name": "Call Book Appointment "
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.item.json;\nconst toolCallId = $('Extract Function Name').item.json.tool_call_id;\n\n// Calculate date boundaries\nconst today = new Date();\nconst todayStr = today.toISOString().split('T')[0];\n\nconst maxDate = new Date();\nmaxDate.setMonth(maxDate.getMonth() + 6);\nconst maxDateStr = maxDate.toISOString().split('T')[0];\n\n// Add date context to result\nconst enrichedResult = {\n  ...result,\n  context: {\n    today: todayStr,\n    earliest_booking: new Date(today.getTime() + 86400000).toISOString().split('T')[0],\n    latest_booking: maxDateStr\n  }\n};\n\nreturn [{\n  json: {\n    results: [\n      {\n        toolCallId: toolCallId,\n        result: JSON.stringify(enrichedResult)\n      }\n    ]\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -128
+      ],
+      "id": "35a97f82-4161-4329-9c8b-482d1bf126fd",
+      "name": "Format Vapi Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1344,
+        48
+      ],
+      "id": "e56c881b-e9b4-47f7-bd05-73bfe9c9e808",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://primary-production-ea8f6.up.railway.app/webhook/cancel-appointment",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Extract Function Name').item.json.function_parameters) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        896,
+        64
+      ],
+      "id": "51cd52e6-ac62-42fa-a905-962bc76cd958",
+      "name": "cancel-appointment"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "31cda463-9342-4ed4-99a0-4d126cffa2ef",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": "false",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        48
+      ],
+      "id": "b2ea7ce2-f6bd-4eaa-863c-19ed8cee3fec",
+      "name": "Is Tool Call?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "debcfcf7-8a80-474d-a2e7-2965bc52e15a",
+              "name": "status ",
+              "value": "ok",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        224
+      ],
+      "id": "6d8af476-9cdd-40f2-ab71-48e728575474",
+      "name": "Empty Response"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Vapi Functions": {
+      "main": [
+        [
+          {
+            "node": "Extract Function Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Function Name": {
+      "main": [
+        [
+          {
+            "node": "Is Tool Call?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Function": {
+      "main": [
+        [
+          {
+            "node": "Call Check Availability",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call Book Appointment ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "cancel-appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Book Appointment ": {
+      "main": [
+        [
+          {
+            "node": "Format Vapi Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Check Availability": {
+      "main": [
+        [
+          {
+            "node": "Format Vapi Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Vapi Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cancel-appointment": {
+      "main": [
+        [
+          {
+            "node": "Format Vapi Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Tool Call?": {
+      "main": [
+        [
+          {
+            "node": "Route by Function",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Empty Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Empty Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c7016c34-aa7b-406f-9a94-5f5b9944a85c",
+  "meta": {
+    "instanceId": "4282ca31d83881be7e8409a5f3c25a3c59b471a84e3ff80d9053071d2fed5f4a"
+  },
+  "id": "7EEN69b3WLSMdVCT",
+  "tags": []
+}

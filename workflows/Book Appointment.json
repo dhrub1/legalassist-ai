@@ -1,0 +1,567 @@
+{
+  "name": "Book Appointment",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2a81f874-8c24-499a-b199-14459d897e1c",
+              "name": "lawyer_id",
+              "value": "={{ $json.body.lawyer_id }}",
+              "type": "string"
+            },
+            {
+              "id": "8fb7e8c8-88c6-4677-a4ac-a461bb128176",
+              "name": "client_name",
+              "value": "={{ $json.body.client_name }}",
+              "type": "string"
+            },
+            {
+              "id": "845e1ac8-1e56-4ad8-b99b-31ec6917c1a6",
+              "name": "client_phone",
+              "value": "={{ $json.body.client_phone }}",
+              "type": "string"
+            },
+            {
+              "id": "cae8446b-eee5-4563-82a5-f4ffe7fe042a",
+              "name": "client_email",
+              "value": "={{ $json.body.client_email }}",
+              "type": "string"
+            },
+            {
+              "id": "6fca7d4e-5d65-4c6b-8f90-ae21a073756c",
+              "name": "appointment_date",
+              "value": "={{ $json.body.appointment_date }}",
+              "type": "string"
+            },
+            {
+              "id": "609c0f8b-a312-4451-b6fc-fc6f051bde5c",
+              "name": "appointment_time",
+              "value": "={{ $json.body.appointment_time }}",
+              "type": "string"
+            },
+            {
+              "id": "f65ba16b-9a26-4563-91ad-c475638d639f",
+              "name": "duration_minutes",
+              "value": "={{ $json.body.duration_minutes }}",
+              "type": "number"
+            },
+            {
+              "id": "98b4cff9-88f4-4cda-aa79-f01c360a5084",
+              "name": "legal_matter_type",
+              "value": "={{ $json.body.legal_matter_type }}",
+              "type": "string"
+            },
+            {
+              "id": "f55984cd-e519-419d-881b-8011cf45e2bc",
+              "name": "urgency_level",
+              "value": "={{ $json.body.urgency_level }}",
+              "type": "string"
+            },
+            {
+              "id": "0bc74b76-e435-4133-be25-f5408935c0a1",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        -496
+      ],
+      "id": "e7480867-11ed-4b74-a085-2b927e912fba",
+      "name": "Extract Booking Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "493d16be-b8f3-4764-8614-a50d02f6f01d",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        -496
+      ],
+      "id": "fc5df4a8-e0bf-4bf2-a9fa-7966fd03c0ed",
+      "name": "client Exist"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2c464ceb-4558-4d28-92c2-f7c1c14d0dce",
+              "name": "client_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        -592
+      ],
+      "id": "3f7d106f-e2d0-43af-b883-77b5091d9acc",
+      "name": "Use Existing Client"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1120,
+        -496
+      ],
+      "id": "4bc775e8-6d20-4543-88a4-e3d230cceeef",
+      "name": "Merge Client ID"
+    },
+    {
+      "parameters": {
+        "jsCode": "const mergedItem = $input.item.json;\nconst clientId = parseInt(mergedItem.client_id || mergedItem.id);\n\nconst booking = $('Extract Booking Data').item.json;\nconst startTime = booking.appointment_time;\nconst duration = parseInt(booking.duration_minutes) || 60;\n\nconst [hours, minutes] = startTime.split(':').map(Number);\nconst totalMinutes = hours * 60 + minutes + duration;\nconst endHours = Math.floor(totalMinutes / 60);\nconst endMinutes = totalMinutes % 60;\nconst endTime = `${String(endHours).padStart(2,'0')}:${String(endMinutes).padStart(2,'0')}`;\n\nreturn [{\n  json: {\n    lawyer_id: parseInt(booking.lawyer_id),\n    client_id: clientId,\n    appointment_date: booking.appointment_date,\n    start_time: startTime,\n    end_time: endTime,\n    duration_minutes: duration,\n    legal_matter_type: booking.legal_matter_type,\n    urgency_level: booking.urgency_level || 'normal',\n    status: 'scheduled',\n    consultation_type: 'initial'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        -496
+      ],
+      "id": "a7d76f05-ca0a-4b2a-baa1-0f51c2c9551b",
+      "name": "Calculate End Time"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "appointments",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "lawyer_id",
+              "condition": "eq",
+              "keyValue": "={{ $node[\"Calculate End Time\"].json.lawyer_id }}"
+            },
+            {
+              "keyName": "appointment_date",
+              "condition": "eq",
+              "keyValue": "={{ $node[\"Calculate End Time\"].json.appointment_date }}"
+            },
+            {
+              "keyName": "start_time",
+              "condition": "lt",
+              "keyValue": "={{ $('Calculate End Time').item.json.end_time }}"
+            },
+            {
+              "keyName": "end_time",
+              "condition": "gt",
+              "keyValue": "={{ $('Extract Booking Data').item.json.appointment_time }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "scheduled"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1568,
+        -496
+      ],
+      "id": "c421d9cc-0175-41f1-9d9c-b9392c09fbee",
+      "name": "Check Conflicts",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "d46PhpLGTJpDJ3r0",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "clients",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "name",
+              "fieldValue": "={{ $node[\"Extract Booking Data\"].json.client_name }}"
+            },
+            {
+              "fieldId": "phone",
+              "fieldValue": "={{ $node[\"Extract Booking Data\"].json.client_phone }}"
+            },
+            {
+              "fieldId": "email",
+              "fieldValue": "={{ $node[\"Extract Booking Data\"].json.client_email }}"
+            },
+            {
+              "fieldId": "legal_matter_category",
+              "fieldValue": "={{ $node[\"Extract Booking Data\"].json.legal_matter_type }}"
+            },
+            {
+              "fieldId": "is_existing_client",
+              "fieldValue": "false"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        896,
+        -400
+      ],
+      "id": "a7c375d0-a6ca-4376-8289-8de4ba47979a",
+      "name": "Create New client ",
+      "credentials": {
+        "supabaseApi": {
+          "id": "d46PhpLGTJpDJ3r0",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://saixdmbqjfmpxgqvsibg.supabase.co/rest/v1/appointments",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaXhkbWJxamZtcHhncXZzaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTMxMjMsImV4cCI6MjA4OTYyOTEyM30.Y4JzRUpPTFtf7YSGoDaSoGAxGErRSMVtTZoTTgBmJb4 "
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Calculate End Time').item.json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2016,
+        -576
+      ],
+      "id": "b18ad4d3-ccbf-490b-9d46-f02b1fbb4f48",
+      "name": "Create Appointment "
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "abe51df2-e24d-4f65-ae55-0e42a7d4b5d4",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1792,
+        -496
+      ],
+      "id": "402e58e8-db89-44c4-876f-decc56fe6060",
+      "name": "No Conflict"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.item.json;\n\nif (input && input.id) {\n  return [{\n    json: {\n      success: true,\n      message: \"Appointment booked successfully\",\n      appointment_id: input.id,\n      date: input.appointment_date,\n      time: input.start_time\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    success: false,\n    message: \"That time slot is no longer available. Please choose another time.\"\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        -496
+      ],
+      "id": "6007c3dd-1606-4f1b-8f26-8a9fa8939b3f",
+      "name": "Build Response "
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2464,
+        -496
+      ],
+      "id": "d2fbc873-6424-4cb8-a3b4-30fccc1bac49",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "book-appointment",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        -496
+      ],
+      "id": "2a5c9eb5-8384-47ed-801b-2181fde10a4c",
+      "name": "Book Appointment",
+      "webhookId": "4d0ee343-bf2c-43be-adff-851d19e56480"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "clients",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "phone",
+              "condition": "eq",
+              "keyValue": "={{ $node[\"Extract Booking Data\"].json.client_phone }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        448,
+        -496
+      ],
+      "id": "8a1de3e8-58af-4080-bd48-61d5be57e992",
+      "name": "Find Existing Client ",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "d46PhpLGTJpDJ3r0",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Extract Booking Data": {
+      "main": [
+        [
+          {
+            "node": "Find Existing Client ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "client Exist": {
+      "main": [
+        [
+          {
+            "node": "Use Existing Client",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create New client ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Existing Client": {
+      "main": [
+        [
+          {
+            "node": "Merge Client ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Client ID": {
+      "main": [
+        [
+          {
+            "node": "Calculate End Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate End Time": {
+      "main": [
+        [
+          {
+            "node": "Check Conflicts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Conflicts": {
+      "main": [
+        [
+          {
+            "node": "No Conflict",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create New client ": {
+      "main": [
+        [
+          {
+            "node": "Merge Client ID",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Create Appointment ": {
+      "main": [
+        [
+          {
+            "node": "Build Response ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Conflict": {
+      "main": [
+        [
+          {
+            "node": "Create Appointment ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Response ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response ": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Book Appointment": {
+      "main": [
+        [
+          {
+            "node": "Extract Booking Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Existing Client ": {
+      "main": [
+        [
+          {
+            "node": "client Exist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "9c903988-eb72-4f62-a4ae-750d4f6f74bf",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4282ca31d83881be7e8409a5f3c25a3c59b471a84e3ff80d9053071d2fed5f4a"
+  },
+  "id": "mGlEOiOIHbIVffei",
+  "tags": []
+}
